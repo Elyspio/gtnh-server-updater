@@ -1,0 +1,13 @@
+appId: dev.elyspio.gtnh-server-updater
+productName: GTNH Server Updater
+directories:
+  output: dist
+files:
+  - out/**
+win:
+  target: nsis
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
