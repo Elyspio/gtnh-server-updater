@@ -8,6 +8,7 @@ import type {
   SshConnectionInput,
 } from "@shared/deployment.types";
 import { DeploymentService } from "./deployment/deployment.service";
+import { resolvePreloadPath } from "./preload-path";
 
 let mainWindow: BrowserWindow | undefined;
 
@@ -24,13 +25,16 @@ function createWindow(): void {
     backgroundColor: "#0b1118",
     show: false,
     webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
+      preload: resolvePreloadPath(__dirname),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
     },
   });
   mainWindow.once("ready-to-show", () => mainWindow?.show());
+  mainWindow.webContents.on("preload-error", (_event, preloadPath, error) => {
+    console.error(`Failed to load preload ${preloadPath}:`, error);
+  });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
 
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {

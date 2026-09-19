@@ -23,11 +23,18 @@ const theme = createTheme({
   },
 });
 
+const content = typeof window.gtnh === "object"
+  ? <App />
+  : <main className="startup-failure">
+      <h1>GTNH Server Updater could not start</h1>
+      <p>The secure desktop bridge did not load. Restart the application or reinstall this build.</p>
+    </main>;
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <App />
+      {content}
     </ThemeProvider>
   </React.StrictMode>,
 );

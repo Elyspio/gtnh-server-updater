@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "description": "Prepare GTNH server upgrades over SSH",
   "main": "./out/main/index.js",
-  "type": "module",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
+    "smoke:ui": "electron scripts/visual-smoke.cjs",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

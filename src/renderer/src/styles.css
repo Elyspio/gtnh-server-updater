@@ -13,6 +13,16 @@ body::before {
   background-size: auto, 32px 32px, 32px 32px;
 }
 #root { position: relative; }
+.startup-failure {
+  max-width: 680px;
+  margin: 15vh auto;
+  padding: 32px;
+  border: 1px solid rgba(255, 152, 112, 0.35);
+  border-radius: 12px;
+  background: #171c22;
+  color: #f7d9cf;
+  font-family: "IBM Plex Sans", sans-serif;
+}
 .brand-mark {
   width: 46px;
   height: 46px;
