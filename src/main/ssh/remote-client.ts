@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { Client, type ConnectConfig, type SFTPWrapper } from "ssh2";
 import type { RemoteDirectoryEntry, SshConnectionInput } from "@shared/deployment.types";
+import { preparePrivateKey } from "./private-key";
 
 export type CommandResult = { stdout: string; stderr: string; exitCode: number | null };
 
@@ -11,13 +12,12 @@ export class RemoteClient {
   public constructor(private readonly input: SshConnectionInput) {}
 
   public async connect(): Promise<void> {
-    const privateKey = await readFile(this.input.privateKeyPath);
+    const key = preparePrivateKey(await readFile(this.input.privateKeyPath), this.input.passphrase);
     const config: ConnectConfig = {
       host: this.input.host,
       port: this.input.port,
       username: this.input.username,
-      privateKey,
-      passphrase: this.input.passphrase || undefined,
+      ...key,
       readyTimeout: 20_000,
       keepaliveInterval: 10_000,
       keepaliveCountMax: 3,
