@@ -10,31 +10,31 @@ const path = require("node:path");
 
 const host = process.env.GTNH_E2E_HOST;
 if (!host) {
-  console.error("GTNH_E2E_HOST is required");
-  process.exit(2);
+	console.error("GTNH_E2E_HOST is required");
+	process.exit(2);
 }
 const connection = {
-  host,
-  port: Number(process.env.GTNH_E2E_PORT ?? 22),
-  username: process.env.GTNH_E2E_USER ?? "root",
-  privateKeyPath: process.env.GTNH_E2E_KEY ?? path.join(os.homedir(), ".ssh", "id_ed25519"),
+	host,
+	port: Number(process.env.GTNH_E2E_PORT ?? 22),
+	username: process.env.GTNH_E2E_USER ?? "root",
+	privateKeyPath: process.env.GTNH_E2E_KEY ?? path.join(os.homedir(), ".ssh", "id_ed25519"),
 };
 
 require(path.join(__dirname, "../out/main/index.js"));
 
 async function waitForWindow() {
-  await app.whenReady();
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    const window = BrowserWindow.getAllWindows()[0];
-    if (window && !window.webContents.isLoading()) return window;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error("Main window did not load");
+	await app.whenReady();
+	for (let attempt = 0; attempt < 100; attempt += 1) {
+		const window = BrowserWindow.getAllWindows()[0];
+		if (window && !window.webContents.isLoading()) return window;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
+	throw new Error("Main window did not load");
 }
 
 async function run() {
-  const window = await waitForWindow();
-  const results = await window.webContents.executeJavaScript(`(async () => {
+	const window = await waitForWindow();
+	const results = await window.webContents.executeJavaScript(`(async () => {
     const connection = ${JSON.stringify(connection)};
     const outcome = async (call) => {
       try { return { ok: true, value: await call() }; }
@@ -49,19 +49,19 @@ async function run() {
     };
   })()`);
 
-  const checks = [
-    ["connection verified", results.test.ok && results.test.value.hostKey.status === "known" && results.test.value.authenticated],
-    ["remote listing", results.list.ok && Array.isArray(results.list.value)],
-    ["relative path refused by schema", !results.relativePath.ok && results.relativePath.error.includes("Invalid request")],
-    ["unknown channel refused by preload", !results.unknownChannel.ok && results.unknownChannel.error.includes("Unknown channel")],
-    ["forged fingerprint refused by schema", !results.forgedFingerprint.ok && results.forgedFingerprint.error.includes("Invalid request")],
-  ];
-  for (const [label, passed] of checks) console.log(`${passed ? "PASS" : "FAIL"} ${label}`);
-  if (checks.some(([, passed]) => !passed)) console.log(JSON.stringify(results, null, 2));
-  app.exit(checks.every(([, passed]) => passed) ? 0 : 1);
+	const checks = [
+		["connection verified", results.test.ok && results.test.value.hostKey.status === "known" && results.test.value.authenticated],
+		["remote listing", results.list.ok && Array.isArray(results.list.value)],
+		["relative path refused by schema", !results.relativePath.ok && results.relativePath.error.includes("Invalid request")],
+		["unknown channel refused by preload", !results.unknownChannel.ok && results.unknownChannel.error.includes("Unknown channel")],
+		["forged fingerprint refused by schema", !results.forgedFingerprint.ok && results.forgedFingerprint.error.includes("Invalid request")],
+	];
+	for (const [label, passed] of checks) console.log(`${passed ? "PASS" : "FAIL"} ${label}`);
+	if (checks.some(([, passed]) => !passed)) console.log(JSON.stringify(results, null, 2));
+	app.exit(checks.every(([, passed]) => passed) ? 0 : 1);
 }
 
 run().catch((error) => {
-  console.error(error);
-  app.exit(1);
+	console.error(error);
+	app.exit(1);
 });

@@ -1,11 +1,11 @@
 import type { ArchiveSource, SshConnectionInput } from "./deployment.types";
 
 export type MergePrepareRequest = {
-  connection: SshConnectionInput;
-  baseSource: ArchiveSource;
-  oldServerPath: string;
-  newServerPath: string;
-  extraExclusions: string[];
+	connection: SshConnectionInput;
+	baseSource: ArchiveSource;
+	oldServerPath: string;
+	newServerPath: string;
+	extraExclusions: string[];
 };
 
 /**
@@ -21,39 +21,39 @@ export type MergePrepareRequest = {
 export type MergeFileKind = "user-modified" | "conflict" | "user-added" | "mod-added" | "removed-by-new" | "regenerated";
 
 export type MergeFileEntry = {
-  path: string;
-  kind: MergeFileKind;
+	path: string;
+	kind: MergeFileKind;
 };
 
 export type MergePrepareResult = {
-  operationId: string;
-  resolvedOldServerPath: string;
-  resolvedNewServerPath: string;
-  files: MergeFileEntry[];
-  comparedBaseFiles: number;
-  userChangedBaseFiles: number;
-  excludedPatterns: string[];
-  baseMismatchWarning?: string;
+	operationId: string;
+	resolvedOldServerPath: string;
+	resolvedNewServerPath: string;
+	files: MergeFileEntry[];
+	comparedBaseFiles: number;
+	userChangedBaseFiles: number;
+	excludedPatterns: string[];
+	baseMismatchWarning?: string;
 };
 
 export type MergeContentKind = "text" | "binary" | "non-utf8" | "large";
 
 export type MergeBlock =
-  | { type: "stable"; lines: string[] }
-  | { type: "resolved"; source: "old" | "new" | "both"; lines: string[] }
-  | { type: "conflict"; id: number; base: string[]; old: string[]; new: string[] };
+	| { type: "stable"; lines: string[] }
+	| { type: "resolved"; source: "old" | "new" | "both"; lines: string[] }
+	| { type: "conflict"; id: number; base: string[]; old: string[]; new: string[] };
 
 export type MergeDocument =
-  | {
-    contentKind: "text";
-    /** The three versions, shown side by side, plus the pre-merged result to review. */
-    base: string;
-    old: string;
-    new: string;
-    merged: string;
-    conflictCount: number;
-  }
-  | { contentKind: Exclude<MergeContentKind, "text">; oldSize: number; newSize: number };
+	| {
+			contentKind: "text";
+			/** The three versions, shown side by side, plus the pre-merged result to review. */
+			base: string;
+			old: string;
+			new: string;
+			merged: string;
+			conflictCount: number;
+	  }
+	| { contentKind: Exclude<MergeContentKind, "text">; oldSize: number; newSize: number };
 
 export type MergeFileRequest = { operationId: string; path: string };
 
@@ -62,45 +62,42 @@ export type MergeFileRequest = { operationId: string; path: string };
  * take-old: copy the old server file over the new one.
  * write: write reviewed text; only valid for text conflicts.
  */
-export type MergeDecision =
-  | { path: string; action: "keep-new" }
-  | { path: string; action: "take-old" }
-  | { path: string; action: "write"; lines: string[] };
+export type MergeDecision = { path: string; action: "keep-new" } | { path: string; action: "take-old" } | { path: string; action: "write"; lines: string[] };
 
 export type MergeApplyRequest = {
-  operationId: string;
-  baseMismatchAcknowledged: boolean;
-  decisions: MergeDecision[];
+	operationId: string;
+	baseMismatchAcknowledged: boolean;
+	decisions: MergeDecision[];
 };
 
 export type MergeApplyResult = {
-  operationId: string;
-  status: "completed" | "failed";
-  copied: number;
-  written: number;
-  kept: number;
-  failedPath?: string;
-  error?: string;
+	operationId: string;
+	status: "completed" | "failed";
+	copied: number;
+	written: number;
+	kept: number;
+	failedPath?: string;
+	error?: string;
 };
 
 export type MergeStage =
-  | "connecting"
-  | "checking-paths"
-  | "transferring"
-  | "downloading"
-  | "validating-archive"
-  | "extracting-base"
-  | "hashing"
-  | "ready"
-  | "applying"
-  | "cleaning-up"
-  | "completed"
-  | "failed";
+	| "connecting"
+	| "checking-paths"
+	| "transferring"
+	| "downloading"
+	| "validating-archive"
+	| "extracting-base"
+	| "hashing"
+	| "ready"
+	| "applying"
+	| "cleaning-up"
+	| "completed"
+	| "failed";
 
 export type MergeProgress = {
-  operationId: string;
-  stage: MergeStage;
-  message: string;
-  transferredBytes?: number;
-  totalBytes?: number;
+	operationId: string;
+	stage: MergeStage;
+	message: string;
+	transferredBytes?: number;
+	totalBytes?: number;
 };

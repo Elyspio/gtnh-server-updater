@@ -46,7 +46,7 @@ All design decisions are recorded in the [Wayfinder map](.scratch/gtnh-server-up
 
 ## Development
 
-Requirements: Node.js 20+, pnpm 10, and a Linux target with a POSIX shell, `curl`, `unzip`, `find` and GNU coreutils and findutils (`sha256sum`, `chmod --reference`, `cp -a`, `find -printf`) and `setsid` (util-linux).
+Requirements: Node.js 26+, pnpm 12, and a Linux target with a POSIX shell, `curl`, `unzip`, `find` and GNU coreutils and findutils (`sha256sum`, `chmod --reference`, `cp -a`, `find -printf`) and `setsid` (util-linux).
 
 ```bash
 pnpm install
@@ -56,9 +56,9 @@ pnpm dev
 Validation commands:
 
 ```bash
-pnpm typecheck
-pnpm test
-pnpm build
+pnpm check      # vp check: Oxfmt + Oxlint (type-aware, type checking)
+pnpm test run   # vp test (Vitest via Vite+)
+pnpm build      # electron-vite build
 pnpm smoke:ui
 ```
 
@@ -74,7 +74,6 @@ GTNH_E2E_HOST=10.0.0.59 GTNH_E2E_FIXTURES=/tmp/gtnh-fixtures pnpm test:e2e
 ```
 
 Optional variables: `GTNH_E2E_USER` (root), `GTNH_E2E_KEY` (`~/.ssh/id_ed25519`), `GTNH_E2E_PORT`. Set `GTNH_E2E_REAL_OLD` (a real installation on the host) with `GTNH_E2E_REAL_BASE` (its local original archive) and optionally `GTNH_E2E_REAL_NEW` to also exercise a real GTNH installation; the base archive is also used to test cancelling an upload.
-
 
 `pnpm smoke:ipc` starts the real main process and calls the IPC bridge against `GTNH_E2E_HOST`.
 
