@@ -4,6 +4,8 @@ export type SshConnectionInput = {
   username: string;
   privateKeyPath: string;
   passphrase?: string;
+  /** Saved profile whose stored passphrase the main process may use when none is typed. */
+  profileId?: string;
 };
 
 export type ArchiveSource =
@@ -72,13 +74,4 @@ export type DeploymentResult = {
   temporaryArchivePath?: string;
   partialDestinationPreserved: boolean;
   error?: string;
-};
-
-export type GtnhApi = {
-  selectArchive(): Promise<string | null>;
-  selectPrivateKey(): Promise<string | null>;
-  listRemoteDirectory(connection: SshConnectionInput, path: string): Promise<RemoteDirectoryEntry[]>;
-  preflight(request: DeploymentPreflightRequest): Promise<DeploymentPreflightResult>;
-  execute(request: DeploymentExecuteRequest): Promise<DeploymentResult>;
-  onProgress(listener: (progress: DeploymentProgress) => void): () => void;
 };

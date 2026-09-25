@@ -6,8 +6,32 @@ files:
   - out/**
 win:
   target: nsis
+  executableName: GTNH Server Updater
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
 linux:
   target:
     - AppImage
     - deb
   category: Utility
+  maintainer: jona.guich69@gmail.com
+appImage:
+  artifactName: ${name}-${version}.${ext}
+deb:
+  artifactName: ${name}_${version}_${arch}.${ext}
+publish:
+  provider: github
+  owner: Elyspio
+  repo: gtnh-server-updater
+  releaseType: release
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true

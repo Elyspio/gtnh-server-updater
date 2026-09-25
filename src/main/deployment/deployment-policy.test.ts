@@ -34,6 +34,14 @@ describe("deployment policy", () => {
     ], ["-", "-", "-", "-"])).toThrow("Unsafe ZIP entries");
   });
 
+  it("accepts entries without Unix type bits from Windows-made archives", () => {
+    expect(() => inspectArchiveEntries([
+      "config/example.cfg",
+      "mods/example.jar",
+      "server.properties",
+    ], ["?", "?", "?"])).not.toThrow();
+  });
+
   it("rejects symbolic links", () => {
     expect(() => inspectArchiveEntries([
       "config/example.cfg",

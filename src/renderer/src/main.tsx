@@ -1,7 +1,12 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import { App } from "./App";
+import { ArchiveSourceFixture } from "./ArchiveSourceFixture";
+import { ConnectionFixture } from "./ConnectionFixture";
+import { MergeListFixture } from "./MergeListFixture";
+import { RemotePathsFixture } from "./RemotePathsFixture";
+
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/600.css";
 import "@fontsource/ibm-plex-sans/700.css";
@@ -23,8 +28,22 @@ const theme = createTheme({
   },
 });
 
-const content = typeof window.gtnh === "object"
-  ? <App />
+const fixture = new URLSearchParams(window.location.search).get("fixture");
+/** Keeps the editor out of the main bundle. */
+const MergeReviewFixture = lazy(async () => ({ default: (await import("./MergeReviewFixture")).MergeReviewFixture }));
+
+const content = fixture === "merge-list"
+  ? <MergeListFixture />
+  : fixture === "archive-source"
+    ? <ArchiveSourceFixture />
+  : fixture === "connection"
+    ? <ConnectionFixture />
+  : fixture === "remote-paths"
+    ? <RemotePathsFixture />
+  : fixture === "merge-review"
+    ? <Suspense fallback={null}><MergeReviewFixture /></Suspense>
+  : typeof window.gtnh === "object"
+    ? <App />
   : <main className="startup-failure">
       <h1>GTNH Server Updater could not start</h1>
       <p>The secure desktop bridge did not load. Restart the application or reinstall this build.</p>

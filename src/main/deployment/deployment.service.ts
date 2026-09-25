@@ -1,4 +1,3 @@
-import { stat } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type {
@@ -12,14 +11,25 @@ import type {
 } from "@shared/deployment.types";
 import { RemoteClient, quoteShell } from "../ssh/remote-client";
 import {
+  CANCELLED_MESSAGE,
+  assertRequiredTools,
+  fetchArchive,
+  getAvailableBytes,
+  getErrorMessage,
+  inspectRemoteArchive,
+  removeRemoteTemporaries,
+  resolveDirectory,
+  withClient,
+} from "../ssh/remote-operations";
+import {
   assertAbsoluteSafePath,
   assertDeletionConfirmed,
   assertEnoughSpace,
-  assertHttpsUrl,
   assertSeparateTrees,
   calculateRequiredFreeBytes,
-  inspectArchiveEntries,
 } from "./deployment-policy";
+
+const REQUIRED_TOOLS = ["sh", "curl", "unzip", "setsid"];
 
 type PreparedOperation = {
   request: DeploymentPreflightRequest;
@@ -37,48 +47,48 @@ export class DeploymentService {
     remotePath: string,
   ): Promise<RemoteDirectoryEntry[]> {
     assertAbsoluteSafePath(remotePath, "Remote directory", true);
-    return await this.withClient(connection, async (client) => await client.listDirectory(remotePath));
+    return await withClient(connection, async (client) => await client.listDirectory(remotePath));
   }
 
-  public async preflight(request: DeploymentPreflightRequest): Promise<DeploymentPreflightResult> {
+  /** Creates one folder in an existing writable directory; never creates parents. */
+  public async createRemoteDirectory(connection: SshConnectionInput, parentPath: string, name: string): Promise<string> {
+    assertAbsoluteSafePath(parentPath, "Parent directory", true);
+    if (!name || name === "." || name === ".." || /[/\0]/.test(name)) throw new Error("Invalid folder name");
+    return await withClient(connection, async (client) => {
+      const parent = await resolveDirectory(client, parentPath, "Parent directory", true);
+      const created = `${trimTrailingSlash(parent)}/${name}`;
+      const result = await client.execute(`mkdir -- ${quoteShell(created)}`);
+      if (result.exitCode !== 0) throw new Error(result.stderr.trim() || `Unable to create ${created}`);
+      return created;
+    });
+  }
+
+  public async preflight(request: DeploymentPreflightRequest, signal?: AbortSignal): Promise<DeploymentPreflightResult> {
     const operationId = randomUUID();
+    let temporaryArchivePath: string | undefined;
     this.emitProgress(operationId, "connecting", "Connecting to the Linux server");
     try {
-      return await this.withClient(request.connection, async (client) => {
+      return await withClient(request.connection, async (client) => {
         this.emitProgress(operationId, "checking-paths", "Checking tools, paths and permissions");
-        await this.assertRequiredTools(client);
+        await assertRequiredTools(client, REQUIRED_TOOLS);
 
         const paths = await this.resolveAndValidatePaths(client, request);
-        const temporaryArchivePath = `${paths.destinationParent}/.gtnh-updater-${operationId}.zip`;
-        const availableBeforeTransfer = await this.getAvailableBytes(client, paths.destinationParent);
+        temporaryArchivePath = `${paths.destinationParent}/.gtnh-updater-${operationId}.zip`;
+        const availableBeforeTransfer = await getAvailableBytes(client, paths.destinationParent);
 
-        let expectedCompressedBytes: number | undefined;
-        if (request.source.type === "local") {
-          const localStat = await stat(request.source.path);
-          if (!localStat.isFile()) throw new Error("The selected local archive is not a file");
-          expectedCompressedBytes = localStat.size;
-          assertEnoughSpace(availableBeforeTransfer, expectedCompressedBytes);
-          this.emitProgress(operationId, "transferring", "Uploading the archive with SFTP");
-          await client.upload(request.source.path, temporaryArchivePath, (transferred, total) => {
+        const expectedCompressedBytes = await fetchArchive(client, request.source, temporaryArchivePath, availableBeforeTransfer, {
+          onUploadStart: () => this.emitProgress(operationId, "transferring", "Uploading the archive with SFTP"),
+          onUploadProgress: (transferred, total) => {
             this.emit({ operationId, stage: "transferring", message: "Uploading the archive", transferredBytes: transferred, totalBytes: total });
-          });
-        } else {
-          const url = assertHttpsUrl(request.source.url);
-          this.emitProgress(operationId, "downloading", "Downloading the archive on the Linux server");
-          await client.executeChecked([
-            "set -eu",
-            `curl --fail --silent --show-error --location --max-redirs 5 --proto '=https' --proto-redir '=https' --output ${quoteShell(temporaryArchivePath)} ${quoteShell(url.href)}`,
-          ].join("\n"));
-        }
+          },
+          onDownloadStart: () => this.emitProgress(operationId, "downloading", "Downloading the archive on the Linux server"),
+        });
 
         this.emitProgress(operationId, "validating-archive", "Validating ZIP integrity and entries");
-        const archive = await this.inspectRemoteArchive(client, temporaryArchivePath);
-        if (expectedCompressedBytes !== undefined && archive.compressedBytes !== expectedCompressedBytes) {
-          throw new Error("Uploaded archive size does not match the local file");
-        }
+        const archive = await inspectRemoteArchive(client, temporaryArchivePath, expectedCompressedBytes);
 
         this.emitProgress(operationId, "checking-space", "Checking extraction space");
-        const availableFreeBytes = await this.getAvailableBytes(client, paths.destinationParent);
+        const availableFreeBytes = await getAvailableBytes(client, paths.destinationParent);
         const requiredFreeBytes = calculateRequiredFreeBytes(archive.uncompressedBytes);
         assertEnoughSpace(availableFreeBytes, requiredFreeBytes);
 
@@ -105,21 +115,37 @@ export class DeploymentService {
           this.emitProgress(operationId, "awaiting-confirmation", "Type the exact destination path to authorize deletion");
         }
         return result;
-      });
+      }, signal);
     } catch (error) {
       this.emitProgress(operationId, "failed", getErrorMessage(error));
+      if (temporaryArchivePath) await removeRemoteTemporaries(request.connection, [temporaryArchivePath]);
       throw error;
     }
   }
 
-  public async execute(request: DeploymentExecuteRequest): Promise<DeploymentResult> {
+  public async execute(request: DeploymentExecuteRequest, signal?: AbortSignal): Promise<DeploymentResult> {
     const operation = this.operations.get(request.operationId);
     if (!operation) throw new Error("Deployment operation was not found or has expired");
     const { result, requestedDestinationPath } = operation;
     assertDeletionConfirmed(result.destinationNonEmpty, result.resolvedDestinationPath, request.confirmationPath);
+    let destinationTouched = false;
 
-    return await this.withClient(operation.request.connection, async (client) => {
-      try {
+    const failure = async (error: unknown): Promise<DeploymentResult> => {
+      const message = signal?.aborted ? CANCELLED_MESSAGE : getErrorMessage(error);
+      this.emitProgress(request.operationId, "failed", message);
+      this.operations.delete(request.operationId);
+      await removeRemoteTemporaries(operation.request.connection, [result.temporaryArchivePath]);
+      return {
+        operationId: request.operationId,
+        status: "failed",
+        destinationPath: requestedDestinationPath,
+        partialDestinationPreserved: destinationTouched,
+        error: message,
+      };
+    };
+
+    try {
+      return await withClient(operation.request.connection, async (client) => {
         this.emitProgress(request.operationId, "checking-paths", "Rechecking the destination before deletion");
         const currentPaths = await this.resolveAndValidatePaths(client, operation.request);
         if (currentPaths.resolvedOldServerPath !== result.resolvedOldServerPath
@@ -129,14 +155,15 @@ export class DeploymentService {
           throw new Error("Remote paths changed after preflight; run preflight again");
         }
 
+        destinationTouched = true;
         if (currentPaths.destinationExists) {
           this.emitProgress(request.operationId, "removing-destination", "Removing the existing destination");
-          await client.executeChecked(`rm -rf -- ${quoteShell(requestedDestinationPath)}`);
+          await client.executeTrackedChecked(`rm -rf -- ${quoteShell(requestedDestinationPath)}`);
         }
         await client.executeChecked(`mkdir -p -- ${quoteShell(requestedDestinationPath)}`);
 
         this.emitProgress(request.operationId, "extracting", "Extracting the validated archive");
-        const extraction = await client.execute(
+        const extraction = await client.executeTracked(
           `unzip -q ${quoteShell(result.temporaryArchivePath)} -d ${quoteShell(requestedDestinationPath)}`,
         );
         if (extraction.exitCode !== 0) {
@@ -154,19 +181,18 @@ export class DeploymentService {
           destinationPath: requestedDestinationPath,
           partialDestinationPreserved: false,
         };
-      } catch (error) {
-        const message = getErrorMessage(error);
-        this.emitProgress(request.operationId, "failed", message);
-        return {
-          operationId: request.operationId,
-          status: "failed",
-          destinationPath: requestedDestinationPath,
-          temporaryArchivePath: result.temporaryArchivePath,
-          partialDestinationPreserved: true,
-          error: message,
-        };
-      }
-    });
+      }, signal);
+    } catch (error) {
+      return await failure(error);
+    }
+  }
+
+  /** Removes the temporary ZIP of every preflight that was never deployed (app shutdown). */
+  public async discardAll(): Promise<void> {
+    const operations = [...this.operations.values()];
+    this.operations.clear();
+    await Promise.all(operations.map(async (operation) =>
+      await removeRemoteTemporaries(operation.request.connection, [operation.result.temporaryArchivePath])));
   }
 
   private async resolveAndValidatePaths(client: RemoteClient, request: DeploymentPreflightRequest): Promise<{
@@ -212,53 +238,6 @@ export class DeploymentService {
     return { requestedDestinationPath, destinationParent, resolvedOldServerPath, resolvedDestinationPath, destinationExists, destinationEntries };
   }
 
-  private async inspectRemoteArchive(client: RemoteClient, archivePath: string): Promise<{
-    compressedBytes: number;
-    uncompressedBytes: number;
-  }> {
-    await client.executeChecked(`unzip -tqq ${quoteShell(archivePath)}`);
-    const entries = (await client.executeChecked(`unzip -Z1 ${quoteShell(archivePath)}`))
-      .split(/\r?\n/)
-      .filter(Boolean);
-    const entryKinds = (await client.executeChecked(
-      `unzip -Z -l ${quoteShell(archivePath)} | awk 'substr($1,1,1) ~ /^[-dlcbps]$/ {print substr($1,1,1)}'`,
-    )).split(/\r?\n/).filter(Boolean);
-    inspectArchiveEntries(entries, entryKinds);
-
-    const compressedBytes = Number((await client.executeChecked(`stat -c %s ${quoteShell(archivePath)}`)).trim());
-    const uncompressedBytes = Number((await client.executeChecked(
-      `unzip -l ${quoteShell(archivePath)} | tail -n 1 | awk '{print $1}'`,
-    )).trim());
-    if (!Number.isSafeInteger(compressedBytes) || compressedBytes <= 0) throw new Error("Invalid ZIP file size");
-    if (!Number.isSafeInteger(uncompressedBytes) || uncompressedBytes <= 0) throw new Error("Invalid uncompressed ZIP size");
-    return { compressedBytes, uncompressedBytes };
-  }
-
-  private async assertRequiredTools(client: RemoteClient): Promise<void> {
-    const missing = (await client.executeChecked(
-      `for tool in sh curl unzip; do command -v "$tool" >/dev/null 2>&1 || printf '%s\\n' "$tool"; done`,
-    )).trim();
-    if (missing) throw new Error(`Missing required Linux tools: ${missing.split(/\s+/).join(", ")}`);
-  }
-
-  private async getAvailableBytes(client: RemoteClient, remotePath: string): Promise<number> {
-    const blocks = Number((await client.executeChecked(
-      `df -Pk ${quoteShell(remotePath)} | awk 'END {print $4}'`,
-    )).trim());
-    if (!Number.isSafeInteger(blocks) || blocks < 0) throw new Error("Unable to determine available disk space");
-    return blocks * 1024;
-  }
-
-  private async withClient<T>(connection: SshConnectionInput, action: (client: RemoteClient) => Promise<T>): Promise<T> {
-    const client = new RemoteClient(connection);
-    try {
-      await client.connect();
-      return await action(client);
-    } finally {
-      client.close();
-    }
-  }
-
   private emitProgress(operationId: string, stage: DeploymentProgress["stage"], message: string): void {
     this.emit({ operationId, stage, message });
   }
@@ -268,6 +247,3 @@ function trimTrailingSlash(value: string): string {
   return value.length > 1 ? value.replace(/\/+$/, "") : value;
 }
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}

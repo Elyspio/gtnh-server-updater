@@ -1,8 +1,8 @@
-import type { GtnhApi } from "@shared/deployment.types";
+import type { GtnhBridge } from "@shared/ipc.contract";
 
 declare global {
   interface Window {
-    gtnh: GtnhApi;
+    gtnh: GtnhBridge;
   }
 }
 

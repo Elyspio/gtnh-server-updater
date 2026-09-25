@@ -50,3 +50,55 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .section-card { animation: none; }
 }
+.merge-group {
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.merge-group-header { padding: 6px 12px; background: rgba(255,255,255,0.035); }
+.merge-row { padding: 2px 12px; border-top: 1px solid rgba(255,255,255,0.04); }
+.merge-block {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 320px;
+  overflow: auto;
+}
+.merge-stable { color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.02); }
+.merge-old { background: rgba(134, 192, 108, 0.1); border-left-color: #86c06c; }
+.merge-new { background: rgba(100, 160, 230, 0.1); border-left-color: #64a0e6; }
+.merge-both { background: rgba(255,255,255,0.05); border-left-color: rgba(255,255,255,0.3); }
+.merge-conflict { padding: 10px; border: 1px solid rgba(228, 164, 75, 0.45); border-radius: 8px; }
+.journey-stepper { padding: 18px 12px; border: 1px solid rgba(255,255,255,0.075); border-radius: 10px; background: rgba(19, 28, 38, 0.7); }
+.report-preview { max-height: 520px; white-space: pre-wrap; }
+.merge-list { padding-right: 2px; }
+.context-summary { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; }
+.context-summary::before { display: none; }
+.review-content { display: flex; flex-direction: column; height: calc(100vh - 150px); }
+.review-panes { flex: 0 0 34%; min-height: 200px; }
+.editor-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; }
+.editor-pane-title { padding: 4px 10px; border-left: 3px solid; background: rgba(255,255,255,0.04); }
+.editor-surface { flex: 1; min-height: 160px; }
+.editor-result { border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; }
+/* Specificity must beat the MUI ButtonBase class injected later in the document. */
+.section-card .profile-card {
+  min-width: 210px;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.025);
+  justify-content: flex-start;
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.section-card .profile-card:hover { border-color: rgba(134, 192, 108, 0.45); background: rgba(134, 192, 108, 0.06); }
+.section-card .profile-card.Mui-disabled { opacity: 0.55; }
+.section-card .profile-card-selected { border-color: #86c06c; background: rgba(134, 192, 108, 0.12); box-shadow: 0 0 0 1px #86c06c inset; }
+.section-card .profile-card-new { min-width: 0; border-style: dashed; color: rgba(255,255,255,0.7); }
+.connection-summary { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; }

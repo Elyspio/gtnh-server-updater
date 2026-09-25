@@ -35,7 +35,8 @@ export function inspectArchiveEntries(entries: string[], entryKinds: string[]): 
     throw new Error(`Unsafe ZIP entries: ${unsafe.slice(0, 5).join(", ")}`);
   }
 
-  const specialKinds = entryKinds.filter((kind) => kind !== "-" && kind !== "d");
+  // "?" is listed for entries made on FAT/NTFS hosts: no Unix type bits, so they extract as regular files.
+  const specialKinds = entryKinds.filter((kind) => kind !== "-" && kind !== "d" && kind !== "?");
   if (specialKinds.length > 0) throw new Error("The ZIP contains a symbolic link or special file");
 
   const normalized = new Set(entries.map((entry) => entry.replace(/^\.\//, "")));

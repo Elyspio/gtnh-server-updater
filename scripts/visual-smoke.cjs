@@ -23,7 +23,8 @@ async function run() {
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   })()`);
   const bodyText = await window.webContents.executeJavaScript("document.body.innerText");
-  if (!bodyText.includes("GTNH Server Updater") || !bodyText.includes("1. Linux server")) {
+  const expected = ["GTNH Server Updater", "SSH connection", "Remote paths", "Carry over changes", "Migrate world", "Report"];
+  if (expected.some((text) => !bodyText.includes(text))) {
     throw new Error(`Renderer did not mount correctly. Visible text: ${bodyText}`);
   }
   if (bodyText.includes("could not start")) {
@@ -34,6 +35,11 @@ async function run() {
   const outputPath = path.join(__dirname, "../dist/ui-smoke.png");
   await writeFile(outputPath, image.toPNG());
   console.log(outputPath);
+  await window.webContents.executeJavaScript("window.scrollTo(0, document.body.scrollHeight)");
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const bottomPath = path.join(__dirname, "../dist/ui-smoke-bottom.png");
+  await writeFile(bottomPath, (await window.webContents.capturePage()).toPNG());
+  console.log(bottomPath);
   window.destroy();
   app.quit();
 }
