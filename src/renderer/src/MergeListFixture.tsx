@@ -21,7 +21,7 @@ export function MergeListFixture(): React.JSX.Element {
 
 	return (
 		<Container maxWidth="lg" sx={{ py: 4 }}>
-			<Paper className="section-card" elevation={0} sx={{ p: 3 }}>
+			<Paper className="section-card" elevation={0} sx={{ p: 2 }}>
 				<Stack spacing={2}>
 					<Typography variant="h6">Merge list fixture: {files.length} files</Typography>
 					<JourneyContextSummary

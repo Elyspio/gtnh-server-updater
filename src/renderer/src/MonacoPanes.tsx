@@ -3,9 +3,10 @@ import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { KeyboardArrowDownRounded, KeyboardArrowUpRounded } from "@mui/icons-material";
 import { alignmentFillers, findConflicts, navigationTargets, replaceLines, sideHunks, type Filler, type Hunk } from "@shared/merge-review";
 import { languageOf, monaco } from "./monaco";
+import { ink } from "./theme";
 
 const BASE_OPTIONS: monaco.editor.IStandaloneEditorConstructionOptions = {
-	theme: "gtnh-dark",
+	theme: "gtnh-sheet",
 	automaticLayout: true,
 	minimap: { enabled: false },
 	scrollBeyondLastLine: false,
@@ -31,7 +32,7 @@ function glyphLine(hunk: Hunk, lineCount: number): number {
 }
 
 function sideDecorations(hunks: Hunk[], side: Side, lineCount: number): monaco.editor.IModelDeltaDecoration[] {
-	const color = side === "old" ? "#86c06c" : "#64a0e6";
+	const color = side === "old" ? ink.old : ink.new;
 	return hunks.flatMap((hunk) => {
 		const line = glyphLine(hunk, lineCount);
 		const arrow: monaco.editor.IModelDeltaDecoration = {
@@ -57,7 +58,7 @@ function resultDecorations(result: string[], oldHunks: Hunk[], newHunks: Hunk[])
 			.map((hunk) => ({ range: new monaco.Range(hunk.resultStart + 1, 1, hunk.resultEnd, 1), options: { isWholeLine: true, linesDecorationsClassName: className } }));
 	const conflicts = findConflicts(result).map((conflict) => ({
 		range: new monaco.Range(conflict.start + 1, 1, conflict.end + 1, 1),
-		options: { isWholeLine: true, className: "merge-conflict", overviewRuler: { color: "#e4a44b", position: monaco.editor.OverviewRulerLane.Full } },
+		options: { isWholeLine: true, className: "merge-conflict", overviewRuler: { color: ink.live, position: monaco.editor.OverviewRulerLane.Full } },
 	}));
 	return [...lines(oldHunks, "merge-result-old"), ...lines(newHunks, "merge-result-new"), ...conflicts];
 }
@@ -221,7 +222,7 @@ export function ThreeWayMergeEditor({ oldText, newText, value, path, onChange }:
 		<Stack direction="row" spacing={1} className="merge-panes">
 			<SidePane side="old" host={oldHost} />
 			<Box className="editor-pane">
-				<Stack direction="row" className="editor-pane-title merge-result-title" sx={{ alignItems: "center", borderColor: "#e4a44b" }}>
+				<Stack direction="row" className="editor-pane-title merge-result-title" sx={{ alignItems: "center", borderColor: ink.live }}>
 					<Typography variant="caption" sx={{ flex: 1 }}>
 						Result to write
 					</Typography>
@@ -253,7 +254,7 @@ export function ThreeWayMergeEditor({ oldText, newText, value, path, onChange }:
 function SidePane({ side, host }: { side: Side; host: React.RefObject<HTMLDivElement | null> }): React.JSX.Element {
 	return (
 		<Box className="editor-pane">
-			<Typography variant="caption" className="editor-pane-title" sx={{ borderColor: side === "old" ? "#86c06c" : "#64a0e6" }}>
+			<Typography variant="caption" className="editor-pane-title" sx={{ borderColor: side === "old" ? ink.old : ink.new }}>
 				{SIDE_TITLES[side]}
 			</Typography>
 			<Box ref={host} className="editor-surface" />

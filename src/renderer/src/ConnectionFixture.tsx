@@ -15,6 +15,7 @@ const PROFILES: SshProfileList = {
 			username: "root",
 			privateKeyPath: "C:/Users/jonag/.ssh/id_ed25519",
 			oldServerPath: "/data/gtnh/daily-731",
+			serviceName: "gtnh",
 			newServerPath: "/data/gtnh/daily-747",
 			hasStoredPassphrase: true,
 		},
@@ -26,6 +27,7 @@ const PROFILES: SshProfileList = {
 			username: "minecraft",
 			privateKeyPath: "C:/Users/jonag/.ssh/id_rsa",
 			oldServerPath: "/srv/old",
+			serviceName: "gtnh",
 			newServerPath: "/srv/new",
 			hasStoredPassphrase: false,
 		},
@@ -54,6 +56,7 @@ export function ConnectionFixture(): React.JSX.Element {
 			<ConnectionPanel
 				connection={connection}
 				oldServerPath="/data/gtnh/daily-731"
+				serviceName="gtnh"
 				newServerPath="/data/gtnh/daily-747"
 				locked={false}
 				onConnectionChange={setConnection}

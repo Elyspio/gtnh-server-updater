@@ -69,7 +69,7 @@ export function RemotePathsPanel({ connection, oldServerPath, newServerPath, loc
 	const canBrowse = !locked && Boolean(connection.host.trim() && connection.username.trim() && connection.privateKeyPath.trim());
 
 	return (
-		<Paper className="section-card" elevation={0} sx={{ p: 3 }}>
+		<Paper className="section-card" elevation={0} sx={{ p: 2 }}>
 			<Typography variant="h6" gutterBottom>
 				Remote paths
 			</Typography>
