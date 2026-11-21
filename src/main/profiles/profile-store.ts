@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { SshProfile, SshProfileList, SshProfileSaveRequest } from "@shared/connection.types";
+import { DEFAULT_SERVICE_NAME, type SshProfile, type SshProfileList, type SshProfileSaveRequest } from "@shared/connection.types";
 import type { SshConnectionInput } from "@shared/deployment.types";
 
 /** OS-backed secret encryption (Electron safeStorage in the app). */
@@ -55,6 +55,7 @@ export class ProfileStore {
 			privateKeyPath: request.privateKeyPath.trim(),
 			oldServerPath: request.oldServerPath.trim(),
 			newServerPath: request.newServerPath.trim(),
+			serviceName: request.serviceName.trim() || DEFAULT_SERVICE_NAME,
 			encryptedPassphrase,
 		};
 		await this.write([...profiles.filter((entry) => entry.id !== profile.id), profile].sort((left, right) => left.name.localeCompare(right.name)));
@@ -77,7 +78,8 @@ export class ProfileStore {
 	private read(): StoredProfile[] {
 		if (!existsSync(this.file)) return [];
 		const parsed: unknown = JSON.parse(readFileSync(this.file, "utf8"));
-		return Array.isArray(parsed) ? (parsed as StoredProfile[]) : [];
+		// Profiles saved before the Mods mode have no service: the GTNH default applies.
+		return Array.isArray(parsed) ? (parsed as StoredProfile[]).map((profile) => ({ ...profile, serviceName: profile.serviceName || DEFAULT_SERVICE_NAME })) : [];
 	}
 
 	private async write(profiles: StoredProfile[]): Promise<void> {

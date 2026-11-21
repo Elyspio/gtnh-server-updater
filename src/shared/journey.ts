@@ -1,6 +1,7 @@
 import type { DeploymentResult } from "./deployment.types";
 import type { MergeApplyResult } from "./merge.types";
 import type { MigrationResult } from "./migration.types";
+import type { ActiveCustomMod } from "./mods.types";
 
 export const JOURNEY_STEPS = ["server", "stop", "deploy", "merge", "migrate", "report"] as const;
 export type JourneyStep = (typeof JOURNEY_STEPS)[number];
@@ -65,6 +66,8 @@ export type JourneyReport = {
 	oldServerPath: string;
 	newServerPath: string;
 	state: JourneyState;
+	/** Mods replaced through the Mods mode and still active in the old server; never carried over. */
+	customMods?: ActiveCustomMod[] | { error: string };
 };
 
 export function buildReportMarkdown(report: JourneyReport): string {
@@ -129,6 +132,18 @@ export function buildReportMarkdown(report: JourneyReport): string {
 		);
 		appendPaths(lines, "Copied paths", result.copiedPaths);
 		if (result.partialPath) lines.push("", `Partial files kept at \`${result.partialPath}\`.`);
+	}
+
+	lines.push("", "## Custom mods", "");
+	if (!report.customMods) {
+		lines.push("Not checked.");
+	} else if ("error" in report.customMods) {
+		lines.push(`The old server could not be checked: ${report.customMods.error}`);
+	} else if (report.customMods.length === 0) {
+		lines.push("No mod replaced through the Mods mode is active in the old server.");
+	} else {
+		lines.push("Active in the old server and not carried over: the new server has the GTNH version. Install them again from the Mods mode.", "");
+		lines.push(...report.customMods.map((mod) => `- \`${mod.modId}\`: \`${mod.installedFile}\` (replaced \`${mod.originalFile}\` on ${mod.createdAt})`));
 	}
 	return `${lines.join("\n")}\n`;
 }

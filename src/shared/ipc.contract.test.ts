@@ -67,6 +67,7 @@ describe("IPC contract", () => {
 				privateKeyPath: "C:/keys/id_ed25519 ",
 				oldServerPath: "/data/gtnh/daily-731 ",
 				newServerPath: "/data/gtnh/daily-747 ",
+				serviceName: " gtnh ",
 				rememberPassphrase: false,
 			},
 		]);
@@ -74,7 +75,21 @@ describe("IPC contract", () => {
 			privateKeyPath: "C:/keys/id_ed25519",
 			oldServerPath: "/data/gtnh/daily-731",
 			newServerPath: "/data/gtnh/daily-747",
+			serviceName: "gtnh",
 		});
+
+		expect(
+			ipcArguments["mods:apply"].safeParse([
+				{
+					action: "replace",
+					modId: "matter-manipulator",
+					jarPath: "C:/builds/mm.jar",
+					server: { connection, serviceName: "gtnh", restartConfirmed: true },
+					prismDirectory: "C:/Prism/instances",
+					instanceIds: ["GT_New_Horizons_2.9.0_Java_17-26"],
+				},
+			]).success
+		).toBe(true);
 	});
 
 	it.each([
@@ -83,6 +98,10 @@ describe("IPC contract", () => {
 		["port out of range", "ssh:test", [{ ...connection, port: 70000 }]],
 		["unknown decision action", "merge:apply", [{ operationId, baseMismatchAcknowledged: false, decisions: [{ path: "a", action: "delete" }] }]],
 		["non uuid operation", "merge:discard", ["../../etc"]],
+		["modid escaping the backup folder", "mods:list-source", ["../x"]],
+		["shell in a service name", "mods:inspect", [{ modId: "mm", prismDirectory: "C:/p", server: { connection, serviceName: "gtnh;reboot" } }]],
+		["option as a service name", "mods:inspect", [{ modId: "mm", prismDirectory: "C:/p", server: { connection, serviceName: "--all" } }]],
+		["instance outside the Prism folder", "mods:apply", [{ action: "restore", modId: "mm", prismDirectory: "C:/p", instanceIds: ["../other"] }]],
 		["folder name with a slash", "remote:mkdir", [connection, "/srv", "a/b"]],
 		["parent folder name", "remote:mkdir", [connection, "/srv", ".."]],
 		["forged fingerprint", "ssh:trust-host", [{ host: "h", port: 22, fingerprint: "SHA256:short" }]],

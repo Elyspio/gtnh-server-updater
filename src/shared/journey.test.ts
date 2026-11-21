@@ -59,4 +59,17 @@ describe("journey", () => {
 		expect(markdown).toContain("### Merged files\n\n- `config/a.cfg`");
 		expect(markdown).toContain("Skipped by the user: no world data was copied.");
 	});
+
+	it("names the custom mods of the old server that the update does not carry over", () => {
+		const base = { generatedAt: new Date("2026-11-21T00:00:00Z"), host: "h", username: "root", oldServerPath: "/srv/old", newServerPath: "/srv/new", state: deployed };
+		expect(buildReportMarkdown(base)).toContain("## Custom mods\n\nNot checked.");
+		expect(buildReportMarkdown({ ...base, customMods: [] })).toContain("No mod replaced through the Mods mode");
+		expect(buildReportMarkdown({ ...base, customMods: { error: "offline" } })).toContain("could not be checked: offline");
+		const markdown = buildReportMarkdown({
+			...base,
+			customMods: [{ modId: "matter-manipulator", installedFile: "mods/mm-custom.jar", originalFile: "mods/mm-0.1.75.jar", createdAt: "2026-11-21T10:00:00.000Z" }],
+		});
+		expect(markdown).toContain("Install them again from the Mods mode");
+		expect(markdown).toContain("- `matter-manipulator`: `mods/mm-custom.jar` (replaced `mods/mm-0.1.75.jar`");
+	});
 });
