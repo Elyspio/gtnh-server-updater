@@ -2,6 +2,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { MigrationExecuteRequest, MigrationItem, MigrationPrepareRequest, MigrationPrepareResult, MigrationProgress, MigrationResult } from "@shared/migration.types";
 import { quoteShell } from "../ssh/remote-client";
+import { preserveAccessScript } from "../ssh/server-access";
 import { assertRequiredTools, getAvailableBytes, CANCELLED_MESSAGE, getErrorMessage, resolveDirectory, withClient } from "../ssh/remote-operations";
 import { assertDeletionConfirmed, assertEnoughSpace, assertSeparateTrees, calculateRequiredFreeBytes } from "../deployment/deployment-policy";
 import { assertSameStats, parseLevelName, replaceLevelName } from "./migration-policy";
@@ -28,7 +29,7 @@ export class MigrationService {
 				request.connection,
 				async (client) => {
 					this.emitProgress(operationId, "checking", "Locating the world and its data");
-					await assertRequiredTools(client, ["sh", "cp", "mv", "find", "awk", "df", "setsid"]);
+					await assertRequiredTools(client, ["sh", "cp", "mv", "find", "awk", "df", "setsid", "stat", "chown", "chmod"]);
 					const resolvedOldServerPath = await resolveDirectory(client, request.oldServerPath, "Old server path", false);
 					const resolvedNewServerPath = await resolveDirectory(client, request.newServerPath, "New server path", true);
 					assertSeparateTrees(resolvedOldServerPath, resolvedNewServerPath);
@@ -134,9 +135,7 @@ export class MigrationService {
 						if (properties === undefined) throw new Error("The new server.properties disappeared");
 						const temporary = `${propertiesPath}.gtnh-migrate-${request.operationId}`;
 						await client.writeFile(temporary, Buffer.from(replaceLevelName(properties, result.worldName), "utf8"));
-						await client.executeChecked(
-							`chmod --reference=${quoteShell(propertiesPath)} -- ${quoteShell(temporary)} && mv -f -- ${quoteShell(temporary)} ${quoteShell(propertiesPath)}`
-						);
+						await client.executeChecked(`set -e\n${preserveAccessScript(propertiesPath, temporary)}\nmv -f -- ${quoteShell(temporary)} ${quoteShell(propertiesPath)}`);
 						levelNameRewritten = true;
 						failedPath = undefined;
 					}

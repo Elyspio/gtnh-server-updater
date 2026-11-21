@@ -10,6 +10,7 @@ import type {
 	SshConnectionInput,
 } from "@shared/deployment.types";
 import { RemoteClient, quoteShell } from "../ssh/remote-client";
+import { alignServerAccessScript } from "../ssh/server-access";
 import {
 	CANCELLED_MESSAGE,
 	assertRequiredTools,
@@ -23,7 +24,7 @@ import {
 } from "../ssh/remote-operations";
 import { assertAbsoluteSafePath, assertDeletionConfirmed, assertEnoughSpace, assertSeparateTrees, calculateRequiredFreeBytes } from "./deployment-policy";
 
-const REQUIRED_TOOLS = ["sh", "curl", "unzip", "setsid"];
+const REQUIRED_TOOLS = ["sh", "curl", "unzip", "setsid", "find", "stat", "chown", "chmod"];
 
 type PreparedOperation = {
 	request: DeploymentPreflightRequest;
@@ -166,6 +167,13 @@ export class DeploymentService {
 					if (extraction.exitCode !== 0) {
 						const details = extraction.stderr.trim() || `unzip exited with ${String(extraction.exitCode)}`;
 						throw new Error(details);
+					}
+
+					this.emitProgress(request.operationId, "aligning-access", "Matching ownership and permissions to the old server");
+					try {
+						await client.executeTrackedChecked(alignServerAccessScript(currentPaths.resolvedOldServerPath, currentPaths.resolvedDestinationPath));
+					} catch (error) {
+						throw new Error(`Unable to match the old server's ownership and permissions: ${getErrorMessage(error)}`);
 					}
 
 					this.emitProgress(request.operationId, "cleaning-up", "Removing the temporary archive");

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { preserveAccessScript } from "../ssh/server-access";
 import type {
 	MergeApplyRequest,
 	MergeApplyResult,
@@ -48,7 +49,7 @@ type PreparedMerge = {
 	result: MergePrepareResult;
 	baseDirectory: string;
 	files: Map<string, MergeFileEntry>;
-	/** Formats of new text files, recorded when a conflict document is loaded. */
+	/** Output formats recorded when text is reviewed; use the old format when the new file is absent. */
 	newTextFormats: Map<string, TextFormat>;
 };
 
@@ -73,7 +74,7 @@ export class MergeService {
 				request.connection,
 				async (client) => {
 					this.emitProgress(operationId, "checking-paths", "Checking tools, paths and permissions");
-					await assertRequiredTools(client, ["sh", "curl", "unzip", "find", "sha256sum", "setsid"]);
+					await assertRequiredTools(client, ["sh", "curl", "unzip", "find", "sha256sum", "setsid", "stat", "chown", "chmod"]);
 					const resolvedOldServerPath = await resolveDirectory(client, request.oldServerPath, "Old server path", false);
 					// The folder is created when the deployment step was skipped or the path was typed by hand.
 					const resolvedNewServerPath = await ensureDirectory(client, request.newServerPath, "New server path");
@@ -148,6 +149,7 @@ export class MergeService {
 		const operation = this.getOperation(request.operationId);
 		const file = operation.files.get(request.path);
 		if (!file) throw new Error("File is not part of this merge");
+		operation.newTextFormats.delete(file.path);
 		const { resolvedOldServerPath, resolvedNewServerPath } = operation.result;
 
 		return await withClient(operation.request.connection, async (client) => {
@@ -168,9 +170,7 @@ export class MergeService {
 			const baseLines = baseFile ? parseText(baseFile.content!).lines : [];
 			// Non-conflicting kinds are previewed as the user's changes against the original file.
 			const newLines = file.kind === "conflict" && newFile ? parseText(newFile.content!).lines : baseLines;
-			if (file.kind === "conflict" && newFile) {
-				operation.newTextFormats.set(file.path, parseText(newFile.content!).format);
-			}
+			operation.newTextFormats.set(file.path, newFile ? parseText(newFile.content!).format : oldText.format);
 			const blocks = mergeThreeWay(baseLines, oldText.lines, newLines);
 			return {
 				contentKind: "text",
@@ -230,9 +230,19 @@ export class MergeService {
 						currentPath = decision.path;
 						const target = `${resolvedNewServerPath}/${decision.path}`;
 						const temporary = `${target}.gtnh-merge-${request.operationId}`;
+						const source = `${resolvedOldServerPath}/${decision.path}`;
+						await client.executeChecked(`mkdir -p -- ${quoteShell(path.posix.dirname(target))}`);
 						await client.writeFile(temporary, formatText(decision.lines, operation.newTextFormats.get(decision.path)!));
 						await client.executeChecked(
-							`chmod --reference=${quoteShell(target)} -- ${quoteShell(temporary)} && mv -f -- ${quoteShell(temporary)} ${quoteShell(target)}`
+							[
+								"set -e",
+								`if [ -f ${quoteShell(target)} ]; then`,
+								preserveAccessScript(target, temporary),
+								"else",
+								preserveAccessScript(source, temporary),
+								"fi",
+								`mv -f -- ${quoteShell(temporary)} ${quoteShell(target)}`,
+							].join("\n")
 						);
 						written += 1;
 					}
@@ -337,8 +347,8 @@ export function validateDecisions(operation: Pick<PreparedMerge, "files" | "newT
 		if (seen.has(decision.path)) throw new Error(`Duplicate decision for ${decision.path}`);
 		seen.add(decision.path);
 		if (decision.action === "write") {
-			if (file.kind !== "conflict" || !operation.newTextFormats.has(decision.path)) {
-				throw new Error(`Merged text can only be written for a reviewed text conflict: ${decision.path}`);
+			if (!operation.newTextFormats.has(decision.path)) {
+				throw new Error(`Merged text can only be written for a reviewed text file: ${decision.path}`);
 			}
 		}
 	}
@@ -354,7 +364,7 @@ function copyScript(source: string, target: string): string {
 	return [
 		`mkdir -p -- ${quoteShell(path.posix.dirname(target))}`,
 		`cp -p -- ${quoteShell(source)} ${quoteShell(temporary)}`,
-		`if [ -f ${quoteShell(target)} ]; then chmod --reference=${quoteShell(target)} -- ${quoteShell(temporary)}; fi`,
+		`if [ -f ${quoteShell(target)} ]; then\n${preserveAccessScript(target, temporary)}\nfi`,
 		`mv -f -- ${quoteShell(temporary)} ${quoteShell(target)}`,
 		"echo done",
 	].join("\n");
