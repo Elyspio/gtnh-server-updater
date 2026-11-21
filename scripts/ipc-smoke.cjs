@@ -2,7 +2,7 @@
  * Runs the real main process and calls the contract bridge from the renderer:
  * preload allow-list, sender check, zod validation and services against a real host.
  *
- *   GTNH_E2E_HOST=10.0.0.59 [GTNH_E2E_USER=root] [GTNH_E2E_KEY=~/.ssh/id_ed25519] electron scripts/ipc-smoke.cjs
+ *   GTNH_E2E_HOST=ely-minecraft [GTNH_E2E_USER=root] [GTNH_E2E_KEY=~/.ssh/id_ed25519] electron scripts/ipc-smoke.cjs
  */
 const { app, BrowserWindow } = require("electron");
 const os = require("node:os");
@@ -46,6 +46,8 @@ async function run() {
       relativePath: await outcome(() => window.gtnh.invoke("remote:list", connection, "root")),
       unknownChannel: await outcome(() => window.gtnh.invoke("shell:exec", "id")),
       forgedFingerprint: await outcome(() => window.gtnh.invoke("ssh:trust-host", { host: connection.host, port: 22, fingerprint: "SHA256:forged" })),
+      modsSettings: await outcome(() => window.gtnh.invoke("mods:settings")),
+      injectedService: await outcome(() => window.gtnh.invoke("mods:inspect", { modId: "matter-manipulator", prismDirectory: "C:/none", server: { connection, serviceName: "gtnh;id" } })),
     };
   })()`);
 
@@ -55,7 +57,19 @@ async function run() {
 		["relative path refused by schema", !results.relativePath.ok && results.relativePath.error.includes("Invalid request")],
 		["unknown channel refused by preload", !results.unknownChannel.ok && results.unknownChannel.error.includes("Unknown channel")],
 		["forged fingerprint refused by schema", !results.forgedFingerprint.ok && results.forgedFingerprint.error.includes("Invalid request")],
+		["mods settings with a Prism folder", results.modsSettings.ok && typeof results.modsSettings.value.prismDirectory === "string"],
+		["shell in a service name refused by schema", !results.injectedService.ok && results.injectedService.error.includes("Invalid request")],
 	];
+	// Read only: locates the service and the mod on the server, and the Prism instances here.
+	if (process.env.GTNH_SMOKE_SERVICE) {
+		const inspected = await window.webContents.executeJavaScript(`window.gtnh.invoke("mods:settings").then((settings) => window.gtnh.invoke("mods:inspect", {
+      modId: "matter-manipulator",
+      prismDirectory: settings.prismDirectory,
+      server: { connection: ${JSON.stringify(connection)}, serviceName: ${JSON.stringify(process.env.GTNH_SMOKE_SERVICE)} },
+    }))`);
+		console.log(JSON.stringify(inspected, null, 2));
+		checks.push(["mods inspection of the real service", Boolean(inspected.server && inspected.server.state)]);
+	}
 	for (const [label, passed] of checks) console.log(`${passed ? "PASS" : "FAIL"} ${label}`);
 	if (checks.some(([, passed]) => !passed)) console.log(JSON.stringify(results, null, 2));
 	app.exit(checks.every(([, passed]) => passed) ? 0 : 1);

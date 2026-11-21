@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, safeStorage, shell, type IpcMainInvokeEvent
 import { electronApp, is } from "@electron-toolkit/utils";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import icon from "../../build/icon.png?asset";
 import type { SshConnectionInput } from "@shared/deployment.types";
 import type { EventChannel } from "@shared/ipc.channels";
 import type { IpcEvents, IpcHandlers } from "@shared/ipc.contract";
@@ -10,6 +11,9 @@ import { registerIpcHandlers } from "./ipc";
 import { configureLogger, getLogDirectory, log } from "./logger";
 import { MergeService } from "./merge/merge.service";
 import { MigrationService } from "./migration/migration.service";
+import { defaultPrismDirectory } from "./mods/local-mods";
+import { ModsService } from "./mods/mods.service";
+import { ModsSettingsStore } from "./mods/mods-settings-store";
 import { OperationRegistry } from "./operation-registry";
 import { resolvePreloadPath } from "./preload-path";
 import { ProfileStore } from "./profiles/profile-store";
@@ -21,6 +25,8 @@ import { installUpdateNow, startAutoUpdate } from "./update";
 let mainWindow: BrowserWindow | undefined;
 let closingAfterCancel = false;
 let profiles: ProfileStore;
+let modsService: ModsService;
+let modsSettings: ModsSettingsStore;
 
 const operations = new OperationRegistry();
 
@@ -48,7 +54,8 @@ function createWindow(): void {
 		height: 820,
 		minWidth: 900,
 		minHeight: 680,
-		backgroundColor: "#0b1118",
+		backgroundColor: "#e8eef1",
+		icon,
 		show: false,
 		webPreferences: {
 			preload: resolvePreloadPath(__dirname),
@@ -155,6 +162,30 @@ const handlers: IpcHandlers = {
 		log("info", `Report saved to ${result.filePath}`);
 		return result.filePath;
 	},
+	"mods:settings": () => modsSettings.get(),
+	"mods:set-prism-directory": async (directory) => await modsSettings.setPrismDirectory(directory),
+	"mods:select-source-folder": async (modId) => {
+		const folder = modId ? modsSettings.source(modId)?.folder : undefined;
+		const result = await dialog.showOpenDialog(mainWindow!, {
+			title: "Select the folder with your mod builds (e.g. build/libs)",
+			defaultPath: folder,
+			properties: ["openDirectory"],
+		});
+		return result.canceled ? null : (result.filePaths[0] ?? null);
+	},
+	"mods:select-directory": async () => {
+		const result = await dialog.showOpenDialog(mainWindow!, { title: "Select the Prism instances folder", properties: ["openDirectory"] });
+		return result.canceled ? null : (result.filePaths[0] ?? null);
+	},
+	"mods:read-folder": async (folder) => await modsService.readFolder(folder),
+	"mods:list-source": async (modId) => await modsService.listSource(modId),
+	"mods:forget-source": async (modId) => await modsSettings.forgetSource(modId),
+	"mods:inspect": async (request) =>
+		await operations.run("mod inspection", async (signal) => await modsService.inspect({ ...request, server: request.server && withSecrets(request.server) }, signal)),
+	"mods:apply": async (request) =>
+		await operations.run(`mod ${request.action}`, async (signal) => await modsService.apply({ ...request, server: request.server && withSecrets(request.server) }, signal)),
+	"mods:active-on-server": async (connection, serverPath) =>
+		await operations.run("custom mod check", async (signal) => await modsService.activeCustomMods(profiles.resolveConnection(connection), serverPath, signal)),
 	"update:install": () => {
 		if (operations.running) throw new Error("Wait for the remote operation to finish before restarting");
 		installUpdateNow();
@@ -174,6 +205,8 @@ app.whenReady()
 			encrypt: (value) => safeStorage.encryptString(value),
 			decrypt: (value) => safeStorage.decryptString(value),
 		});
+		modsSettings = new ModsSettingsStore(join(userData, "mods-settings.json"), () => defaultPrismDirectory());
+		modsService = new ModsService((progress) => send("mods:progress", progress), modsSettings);
 		log("info", `Application started ${app.getVersion()}`);
 		createWindow();
 		startAutoUpdate((status) => send("update:status", status));

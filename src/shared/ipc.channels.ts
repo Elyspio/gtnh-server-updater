@@ -27,9 +27,19 @@ export const INVOKE_CHANNELS = [
 	"app:open-logs",
 	"report:save",
 	"update:install",
+	"mods:settings",
+	"mods:set-prism-directory",
+	"mods:select-source-folder",
+	"mods:select-directory",
+	"mods:read-folder",
+	"mods:list-source",
+	"mods:forget-source",
+	"mods:inspect",
+	"mods:apply",
+	"mods:active-on-server",
 ] as const;
 
-export const EVENT_CHANNELS = ["deployment:progress", "merge:progress", "migration:progress", "update:status"] as const;
+export const EVENT_CHANNELS = ["deployment:progress", "merge:progress", "migration:progress", "update:status", "mods:progress"] as const;
 
 export type InvokeChannel = (typeof INVOKE_CHANNELS)[number];
 export type EventChannel = (typeof EVENT_CHANNELS)[number];

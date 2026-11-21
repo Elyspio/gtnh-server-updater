@@ -74,16 +74,7 @@ export function MigrationPanel({ connection, oldServerPath, newServerPath, oldSe
 		});
 
 	return (
-		<Paper className="section-card" elevation={0} sx={{ p: 3 }}>
-			<Typography variant="h6">Migrate the world</Typography>
-			<Typography
-				sx={{
-					color: "text.secondary",
-					mb: 2,
-				}}
-			>
-				Copies the world named by the old level-name and its server-side data listed by ServerUtilities. The old server is only read.
-			</Typography>
+		<Paper className="section-card" elevation={0} sx={{ p: 2 }}>
 			{error && (
 				<Alert severity="error" sx={{ mb: 2 }}>
 					{error}

@@ -76,7 +76,7 @@ export function DeployPanel({ connection, oldServerPath, newServerPath, record, 
 					The temporary ZIP was removed and the old server was not modified.
 				</Alert>
 			)}
-			<Paper className="section-card" elevation={0} sx={{ p: 3 }}>
+			<Paper className="section-card" elevation={0} sx={{ p: 2 }}>
 				<ArchiveSourceField
 					title="New server archive"
 					localLabel="Local ZIP path (uploaded over SFTP)"
@@ -128,7 +128,7 @@ export function DeployPanel({ connection, oldServerPath, newServerPath, record, 
 				</Paper>
 			)}
 			{preflight && (
-				<Paper className="section-card" elevation={0} sx={{ p: 3 }}>
+				<Paper className="section-card" elevation={0} sx={{ p: 2 }}>
 					<Typography variant="h6">Preflight passed</Typography>
 					<Stack
 						direction="row"

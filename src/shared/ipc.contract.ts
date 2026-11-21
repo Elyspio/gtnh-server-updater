@@ -13,6 +13,7 @@ import type {
 import type { EventChannel, InvokeChannel } from "./ipc.channels";
 import type { MergeApplyRequest, MergeApplyResult, MergeDecision, MergeDocument, MergeFileRequest, MergePrepareRequest, MergePrepareResult, MergeProgress } from "./merge.types";
 import type { MigrationExecuteRequest, MigrationPrepareRequest, MigrationPrepareResult, MigrationProgress, MigrationResult } from "./migration.types";
+import type { ActiveCustomMod, ModJar, ModsApplyRequest, ModsApplyResult, ModsInspectRequest, ModsInspectResult, ModsProgress, ModsServerTarget, ModsSettings } from "./mods.types";
 import type { LatestVersions, ReleaseSummary } from "./releases.types";
 import type { UpdateStatus } from "./update.types";
 
@@ -56,6 +57,7 @@ const profileSaveSchema: z.ZodType<SshProfileSaveRequest> = z.object({
 	privateKeyPath: z.string().trim().max(MAX_PATH),
 	oldServerPath: z.string().trim().max(MAX_PATH),
 	newServerPath: z.string().trim().max(MAX_PATH),
+	serviceName: z.string().trim().max(MAX_TEXT),
 	passphrase: z.string().max(1024).optional(),
 	rememberPassphrase: z.boolean(),
 });
@@ -112,6 +114,40 @@ const migrationExecuteSchema: z.ZodType<MigrationExecuteRequest> = z.object({
 	confirmationPath: z.string().max(MAX_PATH).optional(),
 });
 
+const modId = z
+	.string()
+	.trim()
+	.regex(/^[A-Za-z0-9._-]{1,64}$/)
+	.refine((value) => value !== "." && value !== "..", "Invalid modid");
+const serviceName = z
+	.string()
+	.trim()
+	.regex(/^[A-Za-z0-9@._:-]{1,128}$/)
+	.refine((value) => !value.startsWith("-"), "Invalid service name");
+const instanceId = z
+	.string()
+	.min(1)
+	.max(255)
+	.regex(/^[^/\\\0]+$/)
+	.refine((value) => value !== "." && value !== "..", "Invalid instance");
+
+const modsServerSchema: z.ZodType<ModsServerTarget> = z.object({ connection: connectionSchema, serviceName });
+
+const modsInspectSchema: z.ZodType<ModsInspectRequest> = z.object({
+	modId,
+	server: modsServerSchema.optional(),
+	prismDirectory: localPath,
+});
+
+const modsApplySchema: z.ZodType<ModsApplyRequest> = z.object({
+	action: z.enum(["replace", "restore"]),
+	modId,
+	jarPath: localPath.optional(),
+	server: z.object({ connection: connectionSchema, serviceName, restartConfirmed: z.boolean() }).optional(),
+	prismDirectory: localPath,
+	instanceIds: z.array(instanceId).max(200),
+});
+
 /** Argument schemas, validated by the main process for every call. */
 export const ipcArguments = {
 	"dialog:archive": z.tuple([]),
@@ -148,6 +184,16 @@ export const ipcArguments = {
 	"app:open-logs": z.tuple([]),
 	"report:save": z.tuple([z.string().max(5_000_000), z.string().min(1).max(MAX_TEXT)]),
 	"update:install": z.tuple([]),
+	"mods:settings": z.tuple([]),
+	"mods:set-prism-directory": z.tuple([localPath.nullable()]),
+	"mods:select-source-folder": z.tuple([modId.optional()]),
+	"mods:select-directory": z.tuple([]),
+	"mods:read-folder": z.tuple([localPath]),
+	"mods:list-source": z.tuple([modId]),
+	"mods:forget-source": z.tuple([modId]),
+	"mods:inspect": z.tuple([modsInspectSchema]),
+	"mods:apply": z.tuple([modsApplySchema]),
+	"mods:active-on-server": z.tuple([connectionSchema, remotePath]),
 } satisfies Record<InvokeChannel, z.ZodTuple>;
 
 export type IpcResults = {
@@ -176,6 +222,18 @@ export type IpcResults = {
 	/** Saved file path, or null when the dialog was cancelled. */
 	"report:save": string | null;
 	"update:install": void;
+	"mods:settings": ModsSettings;
+	"mods:set-prism-directory": ModsSettings;
+	/** Chosen build folder, or null when the dialog was cancelled. */
+	"mods:select-source-folder": string | null;
+	"mods:select-directory": string | null;
+	/** Modids with a build in the folder, the one with the newest build first. */
+	"mods:read-folder": { modIds: string[]; settings: ModsSettings };
+	"mods:list-source": ModJar[];
+	"mods:forget-source": ModsSettings;
+	"mods:inspect": ModsInspectResult;
+	"mods:apply": ModsApplyResult;
+	"mods:active-on-server": ActiveCustomMod[];
 };
 
 export type IpcEvents = {
@@ -183,6 +241,7 @@ export type IpcEvents = {
 	"merge:progress": MergeProgress;
 	"migration:progress": MigrationProgress;
 	"update:status": UpdateStatus;
+	"mods:progress": ModsProgress;
 };
 
 export type IpcArguments<C extends InvokeChannel> = z.infer<(typeof ipcArguments)[C]>;

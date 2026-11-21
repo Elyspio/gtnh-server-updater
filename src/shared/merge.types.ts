@@ -60,7 +60,7 @@ export type MergeFileRequest = { operationId: string; path: string };
 /**
  * keep-new: leave the extracted new file untouched.
  * take-old: copy the old server file over the new one.
- * write: write reviewed text; only valid for text conflicts.
+ * write: write reviewed text; valid for any file loaded as text in the review dialog.
  */
 export type MergeDecision = { path: string; action: "keep-new" } | { path: string; action: "take-old" } | { path: string; action: "write"; lines: string[] };
 

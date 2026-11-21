@@ -1,21 +1,25 @@
 import * as monaco from "monaco-editor";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 import JsonWorker from "monaco-editor/language/json/json.worker?worker";
+import { ink } from "./theme";
 
 /** Monaco is bundled with the app: no network, no CDN. */
 self.MonacoEnvironment = {
 	getWorker: (_workerId: string, label: string) => (label === "json" ? new JsonWorker() : new EditorWorker()),
 };
 
-monaco.editor.defineTheme("gtnh-dark", {
-	base: "vs-dark",
+monaco.editor.defineTheme("gtnh-sheet", {
+	base: "vs",
 	inherit: true,
 	rules: [],
 	colors: {
-		"editor.background": "#0f1720",
-		"editorGutter.background": "#0f1720",
-		"diffEditor.insertedTextBackground": "#86c06c22",
-		"diffEditor.removedTextBackground": "#e4a44b22",
+		"editor.background": "#ffffff",
+		"editorGutter.background": ink.paper,
+		"editorLineNumber.foreground": ink.rule,
+		"editorLineNumber.activeForeground": ink.ink,
+		"editor.lineHighlightBackground": "#eef3f6",
+		"diffEditor.insertedTextBackground": "#2f7a4b22",
+		"diffEditor.removedTextBackground": "#b35f0022",
 	},
 });
 

@@ -31,6 +31,7 @@ type Props = {
 	connection: SshConnectionInput;
 	oldServerPath: string;
 	newServerPath: string;
+	serviceName: string;
 	onConnectionChange(connection: SshConnectionInput): void;
 	onProfileLoaded(profile: SshProfile): void;
 	/** Called after each test with whether the server is trusted and the key accepted. */
@@ -45,7 +46,7 @@ type SaveDraft = { name: string; rememberPassphrase: boolean };
 const BLANK: SshConnectionInput = { host: "", port: 22, username: "", privateKeyPath: "", passphrase: "" };
 
 /** Saved profiles first: picking one loads it and tests the server at once. */
-export function ConnectionPanel({ connection, oldServerPath, newServerPath, onConnectionChange, onProfileLoaded, onTested, locked }: Props): React.JSX.Element {
+export function ConnectionPanel({ connection, oldServerPath, newServerPath, serviceName, onConnectionChange, onProfileLoaded, onTested, locked }: Props): React.JSX.Element {
 	const [profiles, setProfiles] = useState<SshProfile[]>([]);
 	const [canStorePassphrase, setCanStorePassphrase] = useState(false);
 	const [editing, setEditing] = useState(false);
@@ -141,6 +142,7 @@ export function ConnectionPanel({ connection, oldServerPath, newServerPath, onCo
 				privateKeyPath: connection.privateKeyPath,
 				oldServerPath,
 				newServerPath,
+				serviceName,
 				passphrase: connection.passphrase || undefined,
 				rememberPassphrase: draft.rememberPassphrase,
 			});
@@ -180,7 +182,7 @@ export function ConnectionPanel({ connection, oldServerPath, newServerPath, onCo
 		});
 
 	return (
-		<Paper className="section-card" elevation={0} sx={{ p: 3 }}>
+		<Paper className="section-card" elevation={0} sx={{ p: 2 }}>
 			<Stack
 				direction="row"
 				spacing={2}
@@ -409,7 +411,7 @@ export function ConnectionPanel({ connection, oldServerPath, newServerPath, onCo
 							color: "text.secondary",
 						}}
 					>
-						The remote paths chosen below are saved with the profile.
+						The remote paths and the systemd service are saved with the profile.
 					</Typography>
 				</DialogContent>
 				<DialogActions>

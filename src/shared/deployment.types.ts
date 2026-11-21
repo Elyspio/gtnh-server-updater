@@ -53,6 +53,7 @@ export type DeploymentStage =
 	| "awaiting-confirmation"
 	| "removing-destination"
 	| "extracting"
+	| "aligning-access"
 	| "cleaning-up"
 	| "completed"
 	| "failed";

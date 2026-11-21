@@ -3,6 +3,8 @@ import type { MergeBlock, MergeDecision, MergeFileEntry, MergeFileKind } from ".
 /** Paths never compared: gitignore-like, a leading "/" anchors to the server root. */
 export const DEFAULT_EXCLUSIONS = [
 	"/mods/",
+	// Mods mode backups: the original JARs and records of a mod replaced by hand.
+	"/mods-backup/",
 	"/libraries/",
 	"*.jar",
 	"/logs/",

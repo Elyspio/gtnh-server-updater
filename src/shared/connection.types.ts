@@ -9,6 +9,8 @@ export type ConnectionTestResult = {
 	orphans: RemoteOrphan[];
 };
 
+export const DEFAULT_SERVICE_NAME = "gtnh";
+
 export type TrustHostRequest = { host: string; port: number; fingerprint: string };
 
 export type SshProfile = {
@@ -20,6 +22,8 @@ export type SshProfile = {
 	privateKeyPath: string;
 	oldServerPath: string;
 	newServerPath: string;
+	/** systemd unit restarted by the Mods mode; its WorkingDirectory is the server folder. */
+	serviceName: string;
 	hasStoredPassphrase: boolean;
 };
 

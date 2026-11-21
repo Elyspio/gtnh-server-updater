@@ -164,16 +164,7 @@ export function MergePanel({ connection, oldServerPath, newServerPath, record, d
 	}, [decisions]);
 
 	return (
-		<Paper className="section-card" elevation={0} sx={{ p: 3 }}>
-			<Typography variant="h6">Carry over your changes</Typography>
-			<Typography
-				sx={{
-					color: "text.secondary",
-					mb: 2,
-				}}
-			>
-				Provide the original archive of the old installation. Only files you changed since that install are proposed; everything else follows the new version.
-			</Typography>
+		<Paper className="section-card" elevation={0} sx={{ p: 2 }}>
 			{error && (
 				<Alert severity="error" sx={{ mb: 2 }}>
 					{error}

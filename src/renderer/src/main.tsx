@@ -1,37 +1,23 @@
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
-import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import { CssBaseline, ThemeProvider } from "@mui/material";
 import { App } from "./App";
 import { ArchiveSourceFixture, installArchiveSourceBridge } from "./ArchiveSourceFixture";
 import { ConnectionFixture, installConnectionBridge } from "./ConnectionFixture";
 import { MergeListFixture } from "./MergeListFixture";
+import { ModsFixture, installModsBridge } from "./ModsFixture";
 import { RemotePathsFixture, installRemotePathsBridge } from "./RemotePathsFixture";
 
-import "@fontsource/ibm-plex-sans/400.css";
-import "@fontsource/ibm-plex-sans/600.css";
-import "@fontsource/ibm-plex-sans/700.css";
+import "@fontsource-variable/archivo/wdth.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./styles.css";
-
-const theme = createTheme({
-	palette: {
-		mode: "dark",
-		primary: { main: "#86c06c" },
-		secondary: { main: "#e4a44b" },
-		background: { default: "#0b1118", paper: "#131c26" },
-	},
-	shape: { borderRadius: 10 },
-	typography: {
-		fontFamily: '"IBM Plex Sans", sans-serif',
-		h4: { fontWeight: 750, letterSpacing: "-0.03em" },
-		button: { textTransform: "none", fontWeight: 700 },
-	},
-});
+import { theme } from "./theme";
 
 const fixture = new URLSearchParams(window.location.search).get("fixture");
 const fixtureBridges: Record<string, () => void> = {
 	"archive-source": installArchiveSourceBridge,
 	connection: installConnectionBridge,
+	mods: installModsBridge,
 	"remote-paths": installRemotePathsBridge,
 };
 if (fixture) fixtureBridges[fixture]?.();
@@ -45,6 +31,8 @@ const content =
 		<ArchiveSourceFixture />
 	) : fixture === "connection" ? (
 		<ConnectionFixture />
+	) : fixture === "mods" ? (
+		<ModsFixture />
 	) : fixture === "remote-paths" ? (
 		<RemotePathsFixture />
 	) : fixture === "merge-review" ? (

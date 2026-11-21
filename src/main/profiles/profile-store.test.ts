@@ -20,6 +20,7 @@ const PROFILE = {
 	privateKeyPath: "C:/keys/id_ed25519",
 	oldServerPath: "/srv/gtnh-old",
 	newServerPath: "/srv/gtnh-new",
+	serviceName: "gtnh",
 };
 
 function storeFile(): string {
@@ -56,6 +57,8 @@ describe("profile store", () => {
 
 		const forgotten = await store.save({ ...PROFILE, id: saved.id, rememberPassphrase: false });
 		expect(forgotten.hasStoredPassphrase).toBe(false);
+		const blankService = await store.save({ ...PROFILE, id: saved.id, serviceName: " ", rememberPassphrase: false });
+		expect(blankService.serviceName).toBe("gtnh");
 		await store.delete(saved.id);
 		expect(store.list().profiles).toEqual([]);
 	});

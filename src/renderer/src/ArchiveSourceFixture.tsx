@@ -29,7 +29,7 @@ export function ArchiveSourceFixture(): React.JSX.Element {
 	const [choice, setChoice] = useState<ArchiveChoice>();
 	return (
 		<Container maxWidth="md" sx={{ py: 4 }}>
-			<Paper className="section-card" elevation={0} sx={{ p: 3 }}>
+			<Paper className="section-card" elevation={0} sx={{ p: 2 }}>
 				<ArchiveSourceField title="New server archive" localLabel="Local ZIP path" urlLabel="Public HTTPS URL" choice={choice} disabled={false} onChange={setChoice} />
 			</Paper>
 		</Container>

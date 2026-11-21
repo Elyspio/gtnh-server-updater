@@ -2,6 +2,7 @@ import type { SshProfileSaveRequest, TrustHostRequest } from "@shared/connection
 import type { DeploymentExecuteRequest, DeploymentPreflightRequest, DeploymentProgress, SshConnectionInput } from "@shared/deployment.types";
 import type { MergeApplyRequest, MergeFileRequest, MergePrepareRequest, MergeProgress } from "@shared/merge.types";
 import type { MigrationExecuteRequest, MigrationPrepareRequest, MigrationProgress } from "@shared/migration.types";
+import type { ModsApplyRequest, ModsInspectRequest, ModsProgress } from "@shared/mods.types";
 import type { UpdateStatus } from "@shared/update.types";
 
 const bridge = (): Window["gtnh"] => window.gtnh;
@@ -32,6 +33,17 @@ export const api = {
 	openLogs: () => bridge().invoke("app:open-logs"),
 	saveReport: (markdown: string, fileName: string) => bridge().invoke("report:save", markdown, fileName),
 	installUpdate: () => bridge().invoke("update:install"),
+	modsSettings: () => bridge().invoke("mods:settings"),
+	setPrismDirectory: (directory: string | null) => bridge().invoke("mods:set-prism-directory", directory),
+	selectModFolder: (modId?: string) => bridge().invoke("mods:select-source-folder", modId),
+	selectDirectory: () => bridge().invoke("mods:select-directory"),
+	readModFolder: (folder: string) => bridge().invoke("mods:read-folder", folder),
+	listModSource: (modId: string) => bridge().invoke("mods:list-source", modId),
+	forgetModSource: (modId: string) => bridge().invoke("mods:forget-source", modId),
+	inspectMods: (request: ModsInspectRequest) => bridge().invoke("mods:inspect", request),
+	applyMods: (request: ModsApplyRequest) => bridge().invoke("mods:apply", request),
+	activeCustomMods: (connection: SshConnectionInput, serverPath: string) => bridge().invoke("mods:active-on-server", connection, serverPath),
+	onModsProgress: (listener: (progress: ModsProgress) => void) => bridge().on("mods:progress", listener),
 	onProgress: (listener: (progress: DeploymentProgress) => void) => bridge().on("deployment:progress", listener),
 	onMergeProgress: (listener: (progress: MergeProgress) => void) => bridge().on("merge:progress", listener),
 	onMigrationProgress: (listener: (progress: MigrationProgress) => void) => bridge().on("migration:progress", listener),

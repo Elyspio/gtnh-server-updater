@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
 import type { MergeDocument, MergeFileEntry } from "@shared/merge.types";
 import { CONFLICT_START, KIND_LABELS, hasConflictMarkers } from "@shared/merge-model";
-import { ReadOnlyPane, ResultDiffPane } from "./MonacoPanes";
-
-type Reference = "new" | "old" | "base";
+import { ThreeWayMergeEditor } from "./MonacoPanes";
 
 type Props = {
 	file: MergeFileEntry;
@@ -15,19 +13,12 @@ type Props = {
 	onWrite(lines: string[]): void;
 };
 
-const REFERENCE_LABELS: Record<Reference, string> = {
-	new: "New version",
-	old: "Your version",
-	base: "Original archive",
-};
-
-/** Review with the VS Code editor: the three versions, then the result compared to one of them. */
+/** Review with the VS Code editor: your version, the result to write and the new version side by side. */
 export function MergeReviewDialog({ file, document, busy, onClose, onDecide, onWrite }: Props): React.JSX.Element {
 	const text = document?.contentKind === "text" ? document : undefined;
 	const merged = text?.merged ?? "";
 	const [result, setResult] = useState(merged);
 	const [resultFor, setResultFor] = useState(merged);
-	const [reference, setReference] = useState<Reference>("new");
 
 	if (resultFor !== merged) {
 		setResultFor(merged);
@@ -70,44 +61,12 @@ export function MergeReviewDialog({ file, document, busy, onClose, onDecide, onW
 				)}
 				{text && (
 					<Stack spacing={1} sx={{ height: "100%" }}>
-						<Stack direction="row" spacing={1} className="review-panes">
-							<ReadOnlyPane title="Original archive" value={text.base} path={file.path} accent="#8a94a6" />
-							<ReadOnlyPane title="Your version" value={text.old} path={file.path} accent="#86c06c" />
-							<ReadOnlyPane title="New version" value={text.new} path={file.path} accent="#64a0e6" />
-						</Stack>
-
-						<Stack
-							direction="row"
-							spacing={2}
-							sx={{
-								alignItems: "center",
-							}}
-						>
-							<Typography variant="subtitle2">Result to write</Typography>
-							<ToggleButtonGroup size="small" exclusive value={reference} onChange={(_event, value: Reference | null) => value && setReference(value)}>
-								{(Object.keys(REFERENCE_LABELS) as Reference[]).map((option) => (
-									<ToggleButton key={option} value={option}>
-										Compare with {REFERENCE_LABELS[option].toLowerCase()}
-									</ToggleButton>
-								))}
-							</ToggleButtonGroup>
-							<Button size="small" onClick={() => setResult(text.merged)}>
-								Reset to pre-merge
-							</Button>
-							<Button size="small" onClick={() => setResult(text.old)}>
-								Fill with yours
-							</Button>
-							<Button size="small" onClick={() => setResult(text.new)}>
-								Fill with new
-							</Button>
-						</Stack>
-
 						{unresolved && (
 							<Alert severity="warning" sx={{ py: 0 }}>
-								Conflict markers are still there ({CONFLICT_START}). Keep the lines you want and delete the markers.
+								Conflict markers are still there ({CONFLICT_START}). Use » or « on a side, or keep the lines you want and delete the markers.
 							</Alert>
 						)}
-						<ResultDiffPane original={text[reference]} value={result} path={file.path} onChange={setResult} />
+						<ThreeWayMergeEditor oldText={text.old} newText={text.new} value={result} path={file.path} onChange={setResult} />
 					</Stack>
 				)}
 			</DialogContent>

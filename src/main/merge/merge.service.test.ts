@@ -10,6 +10,19 @@ const files = new Map<string, MergeFileEntry>([
 const newTextFormats = new Map([["config/both.cfg", { bom: false, eol: "\n" as const, finalNewline: true }]]);
 
 describe("merge decisions", () => {
+	it("accepts edited results for reviewed files changed only by the user", () => {
+		const path = "config/GregTech/GregTech.cfg";
+		expect(() =>
+			validateDecisions(
+				{
+					files: new Map([[path, { path, kind: "user-modified" }]]),
+					newTextFormats: new Map([[path, { bom: false, eol: "\n", finalNewline: true }]]),
+				},
+				[{ path, action: "write", lines: ["B:enabled=false"] }]
+			)
+		).not.toThrow();
+	});
+
 	it("accepts a reviewed decision for every conflict", () => {
 		expect(() =>
 			validateDecisions({ files, newTextFormats }, [
@@ -28,20 +41,20 @@ describe("merge decisions", () => {
 		expect(() => validateDecisions({ files, newTextFormats }, [{ path: "../outside", action: "take-old" }])).toThrow("not part of this merge");
 	});
 
-	it("writes merged text only for loaded text conflicts", () => {
+	it("writes merged text only for files loaded as text", () => {
 		expect(() =>
 			validateDecisions({ files, newTextFormats }, [
 				{ path: "config/user.cfg", action: "write", lines: [] },
 				{ path: "config/both.cfg", action: "keep-new" },
 				{ path: "config/binary.dat", action: "keep-new" },
 			])
-		).toThrow("reviewed text conflict");
+		).toThrow("reviewed text file");
 		expect(() =>
 			validateDecisions({ files, newTextFormats }, [
 				{ path: "config/both.cfg", action: "keep-new" },
 				{ path: "config/binary.dat", action: "write", lines: [] },
 			])
-		).toThrow("reviewed text conflict");
+		).toThrow("reviewed text file");
 	});
 
 	it("rejects duplicate decisions", () => {
